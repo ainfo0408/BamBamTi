@@ -69,6 +69,7 @@ const studentView = document.querySelector("#studentView");
 const adminView = document.querySelector("#adminView");
 
 let currentUser = null;
+let selectedStudentData = null;
 
 loginForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -161,8 +162,58 @@ function renderAdminDashboard() {
     <section class="admin-grid" aria-label="전체 학생 정보">
       ${STUDENTS.map(renderStudentCard).join("")}
     </section>
+
+    <!-- AI 학생 상담 전략 도우미 섹션 -->
+    <section id="aiHelperPanel" class="ai-helper-panel" style="margin-top: 32px;">
+      <div class="section-title">
+        <h3>🤖 AI 학생 상담 전략 도우미</h3>
+      </div>
+      <div class="helper-card" style="border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 24px; box-shadow: var(--shadow);">
+        <div class="helper-form-layout" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+          <!-- Selected Student Info -->
+          <div class="selected-student-box" style="background: var(--surface-strong); padding: 16px; border-radius: 6px; border: 1px solid var(--line);">
+            <h4 style="margin: 0 0 10px 0; font-size: 16px;">선택된 학생 정보</h4>
+            <div id="helperSelectedStudentInfo">
+              <p class="placeholder-text" style="color: var(--muted); margin: 0; font-size: 14px;">학생 카드의 [상담 전략 요청] 버튼을 눌러 학생을 선택해 주세요.</p>
+            </div>
+          </div>
+          
+          <!-- Concern Input -->
+          <div class="concern-input-box" style="display: flex; flex-direction: column;">
+            <label for="teacherConcernInput" style="font-weight: 800; margin-bottom: 8px; font-size: 14px;">교사 상담 고민 입력</label>
+            <textarea id="teacherConcernInput" placeholder="예: 수업 참여는 좋은데 평가 결과가 낮습니다. 어떻게 상담하면 좋을까요?" rows="4" disabled style="width: 100%; border: 1px solid var(--line); border-radius: 6px; padding: 12px; resize: vertical; font-family: inherit; font-size: 14px; outline: none;"></textarea>
+          </div>
+        </div>
+
+        <!-- Preview -->
+        <div class="helper-preview-box" style="margin-bottom: 20px; background: #0f172a; color: #38bdf8; padding: 16px; border-radius: 6px; border: 1px solid var(--line); font-family: monospace; font-size: 13px;">
+          <h4 style="margin: 0 0 10px 0; color: #94a3b8; font-size: 14px; font-family: sans-serif;">전송 데이터 미리보기 (개인정보 보호 익명화)</h4>
+          <pre id="previewDataJson" style="margin: 0; white-space: pre-wrap; word-break: break-all;">{}</pre>
+        </div>
+
+        <div class="helper-actions" style="margin-bottom: 20px;">
+          <button id="getAiStrategyButton" class="primary-button" type="button" disabled style="width: 100%;">AI 상담 전략 받기</button>
+        </div>
+
+        <!-- Loading / Output Display Area -->
+        <div id="aiResultContainer" class="ai-result-container hidden" style="margin-top: 20px; border-top: 1px solid var(--line); padding-top: 20px;">
+          <h4 style="margin: 0 0 12px 0; font-size: 16px;">AI 상담 전략 제안</h4>
+          <div id="aiResultContent" class="ai-result-content" style="line-height: 1.7; font-size: 15px; color: var(--ink);"></div>
+        </div>
+
+        <!-- Error Display Area -->
+        <div id="aiErrorBox" class="form-message error-message hidden" role="alert" style="margin-top: 10px; color: var(--danger); font-weight: 700;"></div>
+
+        <!-- Disclaimer -->
+        <div class="disclaimer-text" style="margin-top: 20px; padding-top: 12px; border-top: 1px dashed var(--line); color: var(--muted); font-size: 12px;">
+          <p style="margin: 0;">※ AI 상담 전략은 참고용입니다. 최종 판단과 실제 상담은 교사가 학생의 상황을 종합적으로 고려하여 진행해야 합니다.</p>
+        </div>
+      </div>
+    </section>
   `;
 
+  // Reset selected state
+  selectedStudentData = null;
   showOnly(adminView);
   logoutButton.classList.remove("hidden");
 }
@@ -176,6 +227,9 @@ function renderStudentCard(student) {
         <p class="student-number">학번 ${student.id}</p>
         ${renderGrades(student.grades, true, `gradesTitle-${student.id}`)}
         ${renderTraits(student)}
+        <div style="margin-top: 16px; text-align: right;">
+          <button class="ghost-button request-strategy-btn" type="button" data-student-id="${student.id}" style="width: 100%;">상담 전략 요청</button>
+        </div>
       </div>
     </article>
   `;
@@ -211,5 +265,195 @@ function renderTraits(student) {
     </section>
   `;
 }
+
+// 보안 점검용 주석:
+// 1. 프론트엔드에 API 키를 넣으면 개발자 도구에서 노출될 수 있다.
+// 2. Gemini API 호출은 Vercel Serverless Function에서 처리한다.
+// 3. .env 파일은 GitHub에 올리지 않는다.
+// 4. Vercel 배포 시에는 Project Settings의 Environment Variables에 GEMINI_API_KEY를 등록해야 한다.
+// 5. Gemini로 전송하는 데이터는 이름, 학번, 사진 경로를 제외한 최소 정보로 제한한다.
+
+function selectStudentForCounseling(studentId) {
+  const student = STUDENTS.find((s) => s.id === studentId);
+  if (!student) return;
+
+  const studentIndex = STUDENTS.findIndex((s) => s.id === studentId);
+  const studentAlias = `학생 ${String.fromCharCode(65 + studentIndex)}`;
+  const gradeSummary = Object.entries(student.grades)
+    .map(([subj, val]) => `${subj}: ${val}`)
+    .join(", ");
+  const learningTraits = [...student.traits, student.teacherMemo].join(". ");
+
+  selectedStudentData = {
+    studentId: student.id,
+    realName: student.name,
+    studentAlias,
+    gradeSummary,
+    learningTraits
+  };
+
+  const infoEl = document.getElementById("helperSelectedStudentInfo");
+  if (infoEl) {
+    infoEl.innerHTML = `
+      <div class="selected-student-detail" style="font-size: 14px; line-height: 1.5;">
+        <p style="margin: 0 0 6px 0;"><strong>화면 표시용 (실제 정보):</strong> ${student.name} (학번: ${student.id})</p>
+        <p style="margin: 0;"><strong>Gemini 전송용 (익명화 정보):</strong> ${studentAlias}</p>
+      </div>
+    `;
+  }
+
+  const textarea = document.getElementById("teacherConcernInput");
+  if (textarea) {
+    textarea.disabled = false;
+    textarea.value = "";
+    textarea.focus();
+  }
+
+  const submitBtn = document.getElementById("getAiStrategyButton");
+  if (submitBtn) {
+    submitBtn.disabled = false;
+  }
+
+  // Clear previous results
+  const resultContainer = document.getElementById("aiResultContainer");
+  if (resultContainer) resultContainer.classList.add("hidden");
+  
+  const resultContent = document.getElementById("aiResultContent");
+  if (resultContent) resultContent.innerHTML = "";
+
+  const errorBox = document.getElementById("aiErrorBox");
+  if (errorBox) {
+    errorBox.classList.add("hidden");
+    errorBox.textContent = "";
+  }
+
+  updatePreview();
+}
+
+function updatePreview() {
+  if (!selectedStudentData) return;
+  const textarea = document.getElementById("teacherConcernInput");
+  const concernVal = textarea ? textarea.value.trim() : "";
+  const previewObj = {
+    studentAlias: selectedStudentData.studentAlias,
+    gradeSummary: selectedStudentData.gradeSummary,
+    learningTraits: selectedStudentData.learningTraits,
+    teacherConcern: concernVal
+  };
+  const previewEl = document.getElementById("previewDataJson");
+  if (previewEl) {
+    previewEl.textContent = JSON.stringify(previewObj, null, 2);
+  }
+}
+
+// Simple markdown formatter
+function formatMarkdown(text) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/^### (.*$)/gim, '<h5 style="font-size: 16px; margin: 16px 0 8px 0; font-weight: 700; color: var(--teal);">$1</h5>')
+    .replace(/^## (.*$)/gim, '<h4 style="font-size: 18px; margin: 20px 0 10px 0; font-weight: 700; color: var(--primary);">$1</h4>')
+    .replace(/^# (.*$)/gim, '<h3 style="font-size: 20px; margin: 24px 0 12px 0; font-weight: 700; border-bottom: 2px solid var(--line); padding-bottom: 6px;">$1</h3>')
+    .replace(/^\s*[-*]\s*(.*$)/gim, '<li style="margin-left: 20px; margin-bottom: 6px;">$1</li>')
+    .replace(/\n/g, "<br>")
+    .replace(/(<li>.*<\/li>)/g, '<ul style="margin: 8px 0; padding: 0;">$1</ul>')
+    .replace(/<\/ul>(\s|<br>)*<ul>/g, '');
+}
+
+// Global delegated click listener for student cards in adminView
+adminView.addEventListener("click", (event) => {
+  const btn = event.target.closest(".request-strategy-btn");
+  if (btn) {
+    const studentId = btn.dataset.studentId;
+    selectStudentForCounseling(studentId);
+    
+    const helperPanel = document.getElementById("aiHelperPanel");
+    if (helperPanel) {
+      helperPanel.scrollIntoView({ behavior: "smooth" });
+    }
+  }
+});
+
+// Event listener for concern text input change to update preview live
+adminView.addEventListener("input", (event) => {
+  if (event.target.id === "teacherConcernInput") {
+    updatePreview();
+  }
+});
+
+// Event listener for AI Strategy Request button click
+adminView.addEventListener("click", async (event) => {
+  if (event.target.id !== "getAiStrategyButton") return;
+
+  const errorBox = document.getElementById("aiErrorBox");
+  const resultContainer = document.getElementById("aiResultContainer");
+  const resultContent = document.getElementById("aiResultContent");
+  const textarea = document.getElementById("teacherConcernInput");
+  const submitBtn = document.getElementById("getAiStrategyButton");
+
+  if (!selectedStudentData) return;
+
+  const concern = textarea ? textarea.value.trim() : "";
+  if (!concern) {
+    if (errorBox) {
+      errorBox.textContent = "상담 고민을 먼저 입력해주세요.";
+      errorBox.classList.remove("hidden");
+    }
+    return;
+  }
+
+  // Clear previous error
+  if (errorBox) {
+    errorBox.textContent = "";
+    errorBox.classList.add("hidden");
+  }
+
+  // Disable button and input during request
+  if (submitBtn) submitBtn.disabled = true;
+  if (textarea) textarea.disabled = true;
+
+  // Show loading state
+  if (resultContainer) resultContainer.classList.remove("hidden");
+  if (resultContent) {
+    resultContent.innerHTML = `<p class="loading-text" style="color: var(--primary); font-weight: 700; margin: 0;">⏳ AI가 상담 전략을 생성하는 중입니다...</p>`;
+  }
+
+  try {
+    const response = await fetch("/api/gemini-counseling", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        studentAlias: selectedStudentData.studentAlias,
+        gradeSummary: selectedStudentData.gradeSummary,
+        learningTraits: selectedStudentData.learningTraits,
+        teacherConcern: concern
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      if (resultContent) {
+        resultContent.innerHTML = formatMarkdown(data.result);
+      }
+    } else {
+      throw new Error(data.error || "알 수 없는 오류");
+    }
+  } catch (error) {
+    console.error("AI Counseling Error:", error);
+    if (resultContainer) resultContainer.classList.add("hidden");
+    if (errorBox) {
+      errorBox.textContent = "AI 상담 전략을 불러오지 못했습니다. API 키 또는 Vercel 환경 변수를 확인해주세요.";
+      errorBox.classList.remove("hidden");
+    }
+  } finally {
+    // Re-enable button and input
+    if (submitBtn) submitBtn.disabled = false;
+    if (textarea) textarea.disabled = false;
+  }
+});
 
 showOnly(loginView);

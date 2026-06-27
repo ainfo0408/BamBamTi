@@ -352,6 +352,59 @@ button {
   display: none !important;
 }
 
+/* AI 학생 상담 전략 도우미 추가 스타일 */
+.ai-helper-panel {
+  margin-top: 36px;
+  margin-bottom: 24px;
+}
+
+.concern-input-box textarea {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background-color: var(--surface);
+  color: var(--ink);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.concern-input-box textarea:focus:not(:disabled) {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.13);
+}
+
+.helper-preview-box pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  background-color: #0f172a;
+  color: #38bdf8;
+  border-radius: 6px;
+  padding: 14px;
+  overflow-x: auto;
+  border: 1px solid #1e293b;
+}
+
+.ai-result-content {
+  background: var(--surface-strong);
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.ai-result-content h3,
+.ai-result-content h4,
+.ai-result-content h5 {
+  margin-top: 18px;
+  margin-bottom: 8px;
+}
+
+.ai-result-content ul {
+  padding-left: 20px;
+}
+
+.ai-result-content li {
+  margin-bottom: 6px;
+}
+
 @media (max-width: 860px) {
   .login-layout,
   .student-layout,
@@ -361,6 +414,10 @@ button {
 
   .intro-panel {
     min-height: auto;
+  }
+  
+  .helper-form-layout {
+    grid-template-columns: 1fr !important;
   }
 }
 
@@ -384,3 +441,4 @@ button {
     width: 100%;
   }
 }
+
