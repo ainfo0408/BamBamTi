@@ -433,7 +433,13 @@ adminView.addEventListener("click", async (event) => {
       })
     });
 
-    const data = await response.json();
+    const responseText = await response.text();
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      throw new Error(`서버 응답이 JSON 형식이 아닙니다 (HTTP ${response.status}). 서버가 실행 중인지 확인해주세요.`);
+    }
 
     if (data.success) {
       if (resultContent) {
