@@ -38,7 +38,8 @@ export default async function handler(req, res) {
   }
 
   // Gemini REST API 호출 준비
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`;
+  const urlPro = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`;
+  const urlFlash = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
   // 프롬프트 작성 (지정된 조건들 반영)
   const prompt = `당신은 학생 상담 전략을 지원하는 교육 전문가이자 전문 상담사입니다.
@@ -82,7 +83,7 @@ export default async function handler(req, res) {
 `;
 
   try {
-    const response = await fetch(url, {
+    let response = await fetch(urlPro, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -97,6 +98,26 @@ export default async function handler(req, res) {
         ]
       })
     });
+
+    // 만약 pro 모델이 할당 한도나 권한 부족(429/403) 등으로 실패하면 flash 모델로 폴백(fallback) 시도
+    if (!response.ok) {
+      console.warn(`gemini-2.5-pro failed with status ${response.status}. Falling back to gemini-2.5-flash.`);
+      response = await fetch(urlFlash, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: prompt }
+              ]
+            }
+          ]
+        })
+      });
+    }
 
     if (!response.ok) {
       const errorText = await response.text();

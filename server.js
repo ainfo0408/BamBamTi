@@ -111,7 +111,8 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`;
+        const geminiUrlPro = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`;
+        const geminiUrlFlash = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
         const prompt = `당신은 학생 상담 전략을 지원하는 교육 전문가이자 전문 상담사입니다.
 다음 학생 데이터를 바탕으로 교사가 학생을 효과적으로 상담할 수 있는 맞춤형 전략을 제안해 주세요.
 
@@ -153,7 +154,7 @@ const server = http.createServer(async (req, res) => {
 `;
 
         try {
-          const response = await fetch(geminiUrl, {
+          let response = await fetch(geminiUrlPro, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -168,6 +169,25 @@ const server = http.createServer(async (req, res) => {
               ]
             })
           });
+
+          if (!response.ok) {
+            console.warn(`gemini-2.5-pro failed with status ${response.status}. Falling back to gemini-2.5-flash.`);
+            response = await fetch(geminiUrlFlash, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                contents: [
+                  {
+                    parts: [
+                      { text: prompt }
+                    ]
+                  }
+                ]
+              })
+            });
+          }
 
           if (!response.ok) {
             const errorText = await response.text();

@@ -446,7 +446,7 @@ adminView.addEventListener("click", async (event) => {
     console.error("AI Counseling Error:", error);
     if (resultContainer) resultContainer.classList.add("hidden");
     if (errorBox) {
-      errorBox.textContent = "AI 상담 전략을 불러오지 못했습니다. API 키 또는 Vercel 환경 변수를 확인해주세요.";
+      errorBox.innerHTML = `AI 상담 전략을 불러오지 못했습니다. API 키 또는 Vercel 환경 변수를 확인해주세요.<br><span style="font-size: 12px; font-weight: normal; opacity: 0.85; display: block; margin-top: 4px;">상세 에러: ${error.message}</span>`;
       errorBox.classList.remove("hidden");
     }
   } finally {
